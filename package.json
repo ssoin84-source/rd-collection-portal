@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate deploy"
   },
   "dependencies": {
+    "@netlify/database": "^1.1.0",
     "@netlify/plugin-nextjs": "^5.9.4",
     "@prisma/client": "^5.20.0",
     "bcryptjs": "^2.4.3",
