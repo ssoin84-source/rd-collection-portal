@@ -71,6 +71,20 @@ export default function CustomersPage() {
     load();
   }
 
+  async function applyBulkDelete() {
+    if (!selected.size) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete ${selected.size} selected customer(s)?\n\nThis will also delete all of their transaction records. This cannot be undone.`
+    );
+    if (!confirmed) return;
+    await fetch("/api/customers/bulk-delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: Array.from(selected) }),
+    });
+    load();
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -103,6 +117,7 @@ export default function CustomersPage() {
           <Button variant="ghost" onClick={() => applyBulkStatus("ACTIVE")}>Mark Active</Button>
           <Button variant="ghost" onClick={() => applyBulkStatus("INACTIVE")}>Mark Inactive</Button>
           <Button variant="danger" onClick={() => applyBulkStatus("ARCHIVED")}>Archive</Button>
+          <Button variant="danger" onClick={applyBulkDelete}>Delete Selected</Button>
         </div>
       )}
 
