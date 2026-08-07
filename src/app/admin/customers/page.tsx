@@ -13,6 +13,7 @@ interface CustomerRow {
   openingDate: string;
   monthPaidUpto: string;
   monthDue: number;
+  monthsPaid: number;
   pendingAmount: number;
   penalty: number;
   totalDueAmount: number;
@@ -116,7 +117,7 @@ export default function CustomersPage() {
               <th className="px-4 py-3">Account Number</th>
               <th className="px-4 py-3">Denomination</th>
               <th className="px-4 py-3">Opening Date</th>
-              <th className="px-4 py-3">Month Paid Upto</th>
+              <th className="px-4 py-3">Installments Paid</th>
               <th className="px-4 py-3">Month Due</th>
               <th className="px-4 py-3">Penalty</th>
               <th className="px-4 py-3">Total Due</th>
@@ -145,7 +146,7 @@ export default function CustomersPage() {
                   </td>
                   <td className="px-4 py-3">{formatCurrency(r.denomination)}</td>
                   <td className="px-4 py-3 text-gray-500">{formatDate(r.openingDate)}</td>
-                  <td className="px-4 py-3 text-gray-500">{formatDate(r.monthPaidUpto)}</td>
+                  <td className="px-4 py-3 text-gray-500">{r.monthsPaid}</td>
                   <td className="px-4 py-3">{r.monthDue}</td>
                   <td className="px-4 py-3">{formatCurrency(r.penalty)}</td>
                   <td className="px-4 py-3 font-semibold text-navy-900">{formatCurrency(r.totalDueAmount)}</td>
@@ -205,22 +206,38 @@ function CustomerProfilePanel({
     setData(d.customer);
   }
 
+  async function deleteCustomer() {
+    if (!customerId || !data) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete ${data.customerName} (${data.accountNumber})?\n\nThis will also delete all of their transaction records. This cannot be undone.`
+    );
+    if (!confirmed) return;
+    await fetch(`/api/customers/${customerId}`, { method: "DELETE" });
+    onUpdated();
+    onClose();
+  }
+
   return (
     <SidePanel open={!!customerId} onClose={onClose} title="Customer Profile">
       {!data ? (
         <p className="text-sm text-gray-400">Loading…</p>
       ) : (
         <div className="space-y-5">
-          <div>
-            <p className="font-display text-lg font-bold text-navy-900">{data.customerName}</p>
-            <p className="text-sm text-gray-500">{data.accountNumber}</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="font-display text-lg font-bold text-navy-900">{data.customerName}</p>
+              <p className="text-sm text-gray-500">{data.accountNumber}</p>
+            </div>
+            <Button variant="danger" onClick={deleteCustomer}>
+              Delete Customer
+            </Button>
           </div>
 
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <Field label="Opening Date" value={formatDate(data.openingDate)} />
             <Field label="Denomination" value={formatCurrency(Number(data.denomination))} />
             <Field
-              label="Month Paid Upto"
+              label="Installments Paid"
               value={
                 editing ? (
                   <div className="flex items-center gap-2">
@@ -234,8 +251,8 @@ function CustomerProfilePanel({
                   </div>
                 ) : (
                   <span className="flex items-center gap-2">
-                    {formatDate(data.monthPaidUpto)}
-                    <button onClick={() => setEditing(true)} aria-label="Edit Month Paid Upto" className="focus-ring text-gray-400 hover:text-navy-700">
+                    {data.monthsPaid}
+                    <button onClick={() => setEditing(true)} aria-label="Correct installments paid" className="focus-ring text-gray-400 hover:text-navy-700">
                       ✎
                     </button>
                   </span>

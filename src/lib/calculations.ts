@@ -22,6 +22,7 @@ export function addMonths(date: Date, months: number): Date {
 
 export interface DueDetails {
   monthDue: number;
+  monthsPaid: number;
   pendingAmount: number;
   penalty: number;
   totalDueAmount: number;
@@ -44,7 +45,7 @@ export function computeDueDetails(
   const totalDueAmount = pendingAmount + penalty;
   const nextDueDate = addMonths(monthPaidUpto, 1);
 
-  return { monthDue, pendingAmount, penalty, totalDueAmount, nextDueDate };
+  return { monthDue, monthsPaid, pendingAmount, penalty, totalDueAmount, nextDueDate };
 }
 
 export function formatCurrency(value: number): string {

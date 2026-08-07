@@ -2,6 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { computeDueDetails, formatCurrency } from "@/lib/calculations";
 import { StatCard } from "@/components/ui/StatCard";
 
+// Force this page to always fetch fresh data on every request instead of
+// being cached as a static page at build time (which showed stale/empty data).
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminDashboardPage() {
   const [totalCustomers, active, inactive, archived, activeCustomers, totalCollectedAgg, recentLots] =
     await Promise.all([

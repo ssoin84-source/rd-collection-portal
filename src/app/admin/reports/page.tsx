@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { computeDueDetails, formatCurrency } from "@/lib/calculations";
 import { StatCard } from "@/components/ui/StatCard";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ReportsPage() {
   const customers = await prisma.customer.findMany({ where: { status: "ACTIVE" } });
   const setting = await prisma.setting.findUnique({ where: { key: "penaltyPerMonth" } });

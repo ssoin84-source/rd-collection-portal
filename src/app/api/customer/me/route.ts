@@ -1,27 +1,46 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCustomer } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { computeDueDetails } from "@/lib/calculations";
 
-// Read-only dashboard data for the logged-in customer:
-// My Accounts, Account Details, Transaction History, Penalty, Pending Amount, Next Due Date
-export async function GET() {
-  const session = await requireCustomer();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const accounts = await prisma.customer.findMany({
-    where: { id: { in: session.accountIds } },
+  const customer = await prisma.customer.findUnique({
+    where: { id: params.id },
     include: { transactions: { orderBy: { transactionDate: "desc" } } },
   });
+  if (!customer) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const setting = await prisma.setting.findUnique({ where: { key: "penaltyPerMonth" } });
   const penaltyPerMonth = setting ? Number(setting.value) : undefined;
+  const due = computeDueDetails(customer.openingDate, customer.monthPaidUpto, Number(customer.denomination), penaltyPerMonth);
+  const totalDeposit = customer.transactions.reduce((sum, t) => sum + Number(t.amount), 0);
 
-  const withCalc = accounts.map((a) => {
-    const due = computeDueDetails(a.openingDate, a.monthPaidUpto, Number(a.denomination), penaltyPerMonth);
-    const totalDeposit = a.transactions.reduce((sum, t) => sum + Number(t.amount), 0);
-    return { ...a, ...due, totalDeposit };
-  });
+  return NextResponse.json({ customer: { ...customer, ...due, totalDeposit } });
+}
 
-  return NextResponse.json({ accounts: withCalc });
+// Manual correction - admin can only edit monthPaidUpto and nextDueDate (via pencil icon)
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json();
+  const data: Record<string, unknown> = {};
+  if (body.monthPaidUpto) data.monthPaidUpto = new Date(body.monthPaidUpto);
+
+  const customer = await prisma.customer.update({ where: { id: params.id }, data });
+  return NextResponse.json({ customer });
+}
+
+// Permanently delete a customer (also removes their transactions and customer-login links).
+// Lot upload history is preserved — LotItem rows keep the historical record even
+// though their customerId link is cleared.
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const existing = await prisma.customer.findUnique({ where: { id: params.id } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  await prisma.customer.delete({ where: { id: params.id } });
+  return NextResponse.json({ success: true });
 }

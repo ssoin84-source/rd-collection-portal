@@ -12,7 +12,8 @@ export async function GET() {
 }
 
 // Lot Upload: creates a Lot, its LotItems, and posts a Transaction per item,
-// advancing each matched customer's monthPaidUpto by one month.
+// automatically advancing each matched customer's monthPaidUpto based on
+// how many months the deposit amount covers (deposit ÷ denomination).
 export async function POST(req: NextRequest) {
   if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -56,8 +57,12 @@ export async function POST(req: NextRequest) {
             lotId: lot.id,
           },
         });
+        // Auto-calculate how many months this deposit covers:
+        // months = deposit amount ÷ denomination (rounded to nearest whole month).
+        const denomination = Number(customer.denomination) || item.denomination || 1;
+        const monthsCovered = Math.max(0, Math.round(item.depositAmount / denomination));
         const nextMonthPaidUpto = new Date(customer.monthPaidUpto);
-        nextMonthPaidUpto.setMonth(nextMonthPaidUpto.getMonth() + 1);
+        nextMonthPaidUpto.setMonth(nextMonthPaidUpto.getMonth() + monthsCovered);
         await tx.customer.update({
           where: { id: customer.id },
           data: { monthPaidUpto: nextMonthPaidUpto },
